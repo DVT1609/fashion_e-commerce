@@ -1,0 +1,124 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: golang_app_fashion_e-commerce
+    networks:
+      - network_fashion_e-commerce
+    ports:
+      - "3004:3004"
+    restart: always
+    volumes:
+      - .:/app
+    # working_dir: /app
+    env_file: 
+    - .env
+    depends_on:
+      - mysql
+      - aerospike
+      - kafka
+
+  mysql:
+    image: mysql:9.6
+    container_name: mysql_fashion_e-commerce
+    networks:
+      - network_fashion_e-commerce
+    restart: always
+    env_file: 
+    - .env
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_fashion_e-commerce
+    networks:
+      - network_fashion_e-commerce
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+
+  aerospike:
+    image: aerospike/aerospike-server:latest
+    container_name: aerospike_fashion_e-commerce
+    networks:
+      - network_fashion_e-commerce
+    user: root  # QUAN TRỌNG: Cấp quyền tạo file .dat
+    ports:
+      - "3000:3000"      # Client connections
+      - "3001:3001"      # Fabric connections
+      - "3002:3002"      # Info connections
+    # Thêm dòng này để chỉ định file cấu hình cụ thể
+    command: ["--config-file", "/opt/aerospike/etc/aerospike.conf"]
+    volumes:
+      - aerospike_data:/opt/aerospike/data
+      - ./aerospike.conf:/opt/aerospike/etc/aerospike.conf
+
+  aerospike_tool:
+    image: aerospike/aerospike-tools:latest
+    container_name: aerospike_tool_fashion_e-commerce
+    networks:
+      - network_fashion_e-commerce
+    entrypoint: aql -h aerospike_fashion_e-commerce #Tự kết nối tới container aerospike_fashion_e-commerce
+    stdin_open: true                           # tương đương -i
+    tty: true                                  # tương đương -t
+    depends_on:
+      - aerospike
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka_fashion_e-commerce
+    networks:
+      - network_fashion_e-commerce
+    ports:
+      - "9092:9092" # Cho phép máy thật "nhìn" thấy Kafka
+    restart: always
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # Sửa PLAINTEXT://:9092 để nó lắng nghe trên mọi interface bên trong container
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3 
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  
+    volumes:
+      - kafka_data:/var/lib/kafka/data # Mount thư mục dữ liệu quan trọng nhất
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka_ui_fashion_e-commerce
+    networks:
+      - network_fashion_e-commerce
+    ports:
+      - "8085:8080" # Cổng 8085 trên máy thật trỏ vào 8080 của container
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - DYNAMIC_CONFIG_ENABLED=true # Cho phép chỉnh sửa cấu hình ngay trên giao diện
+    depends_on:
+      - kafka
+
+networks:
+    network_fashion_e-commerce:
+      driver: bridge
+
+volumes:
+  mysql_data:
+  aerospike_data: 
+  kafka_data:
+  

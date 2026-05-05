@@ -1,0 +1,38 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # Lệnh build: -o ./tmp/main nghĩa là xuất file nhị phân vào thư mục tmp
+  cmd = "go build -o ./tmp/main ."
+  
+  # File sẽ chạy sau khi build xong
+  entrypoint = "./tmp/main"
+  
+  # QUAN TRỌNG: Bật cái này để Air nhận diện thay đổi trên Windows/Docker
+  delay = 1000
+  poll = true
+  poll_interval = 500 # Kiểm tra mỗi 500ms
+  
+  # Các đuôi file Air sẽ canh chừng
+  include_ext = ["go", "tpl", "tmpl", "html", "yaml", "toml"]
+  
+  # Các thư mục Air sẽ theo dõi (Thêm các thư mục Bài 2 của bạn vào đây)
+  include_dir = [".","handlers", "models", "database", "config"]
+  
+  # Loại trừ các thư mục không cần thiết để đỡ tốn tài nguyên
+  exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+  
+  # Dừng quy trình cũ trước khi chạy quy trình mới (Tránh lỗi port 3000 bị chiếm)
+  stop_on_error = true
+
+[log]
+  time = true
+
+[color]
+  main = "yellow"
+  watcher = "cyan"
+  build = "green"
+  runner = "magenta"
+
+[misc]
+  clean_on_exit = true
