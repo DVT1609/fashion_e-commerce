@@ -1,7 +1,7 @@
 package repositoryMysql
 
 import (
-	"errors"
+	// "errors"
 	"github.com/DVT1609/fashion_e-commerce.git/internal/models"
 	"gorm.io/gorm"
 )
@@ -12,18 +12,30 @@ type UserMysqlRepository struct {
 
 func (repo *UserMysqlRepository) CheckUserExistsMysql(email, username string) (bool, error) {
 	var user models.User
-    // Truy vấn tìm user đầu tiên khớp với email hoặc username
-	err := repo.DB.Model(&models.User{}).Where("email = ? OR username = ?", email, username).First(&user).Error
+
+	// Sử dụng UNION ALL để ép MySQL dùng riêng biệt Index của email và username.
+	// Loại bỏ ORDER BY để tránh việc MySQL phải thực hiện thêm bước sort dữ liệu.
+	// Limit 1 ở ngoài cùng giúp dừng truy vấn ngay khi tìm thấy bất kỳ sự trùng lặp nào.
+	query := `
+		(SELECT * FROM users WHERE email = ? LIMIT 1)
+		UNION ALL
+		(SELECT * FROM users WHERE username = ? LIMIT 1)
+		LIMIT 1
+	`
+
+	err := repo.DB.Raw(query, email, username).Scan(&user).Error
 	
-    if err != nil {
-        // Trường hợp 1: Không tìm thấy bản ghi nào -> Tài khoản chưa tồn tại (Hợp lệ để đăng ký)
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil 
-		}
-        // Trường hợp 2: Lỗi kết nối DB, lỗi cú pháp... -> Cần trả về lỗi để Service xử lý
-		return false, err 
+	if err != nil {
+		return false, err
 	}
 
-    // Trường hợp 3: Không có lỗi (err == nil) -> Đã tìm thấy User -> Tài khoản ĐÃ tồn tại
+	// Trong GORM, khi dùng Raw().Scan(), nếu không tìm thấy bản ghi nào, 
+	// nó sẽ không trả về lỗi gorm.ErrRecordNotFound mà sẽ trả về object rỗng.
+	// Vì vậy ta kiểm tra ID (hoặc Email) của user để biết có tìm thấy hay không.
+	if user.Email == "" && user.Username == "" {
+		return false, nil
+	}
+
+	// Nếu tìm thấy bất kỳ trường nào, chứng tỏ tài khoản đã tồn tại
 	return true, nil
 }

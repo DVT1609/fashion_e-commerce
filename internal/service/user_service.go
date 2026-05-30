@@ -8,8 +8,9 @@ import (
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryAerospike"
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryKafkaProducer"
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryMysql"
+	"github.com/DVT1609/fashion_e-commerce.git/internal/utils/security"
 	"github.com/gofiber/fiber/v3"
-	"golang.org/x/crypto/bcrypt"
+	// "golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -51,9 +52,10 @@ func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.Regi
 
 	// 2. Mã hóa mật khẩu (Bcrypt)
 	// Phải băm mật khẩu trước khi lưu trữ hoặc đẩy vào Kafka để bảo mật thông tin người dùng
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerRequest.Password), bcrypt.MinCost)
+	hashedPassword, err := security.HashPasswordArgon2(registerRequest.Password)
 	if err != nil {
-		return err
+		log.Printf("Lỗi khi băm mật khẩu Argon2: %v", err)
+		return errors.New("không thể xử lý mật khẩu")
 	}
 
 	// Chuẩn bị dữ liệu để lưu trữ (thay mật khẩu thô bằng bản đã băm)

@@ -8,10 +8,10 @@ export const options = {
       startRate: 100,
       timeUnit: '1s',
       preAllocatedVUs: 500, // Số lượng nhân viên ảo sẵn sàng
-      maxVUs: 2000,        // Tối đa 2000 nhân viên ảo để xử lý Bcrypt chậm
+      maxVUs: 1000,        // Tối đa 1000 nhân viên ảo để xử lý Bcrypt chậm
       stages: [
         { duration: '2m', target: 500 },   // Trong 2 phút đầu nâng tốc độ lên 500 req/s
-        { duration: '11m', target: 1200 }, // Duy trì và nâng lên 1200 req/s (để đạt ~1M request)
+        { duration: '11m', target: 1000 }, // Duy trì và nâng lên 1000 req/s (để đạt ~1M request)
         { duration: '2m', target: 0 },
       ],
     },
