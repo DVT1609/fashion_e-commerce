@@ -14,8 +14,8 @@ type UserAerospikeRepository struct {
 func (repo *UserAerospikeRepository) CheckUserExistsAerospike(email string, username string) (bool, error) {
 	// Kiểm tra trong Aerospike nếu có email hoặc username trùng lặp
 	// Sử dụng email và username làm key để tra cứu nhanh
-	keyEmail, _ := as.NewKey("fashion_e-commerce", "usersRegister", "email:"+email)
-	keyUsername, _ := as.NewKey("fashion_e-commerce", "usersRegister", "username:"+username)
+	keyEmail, _ := as.NewKey("fashion_e-commerce", "usersRegister", "pending:email:"+email)
+	keyUsername, _ := as.NewKey("fashion_e-commerce", "usersRegister", "pending:username:"+username)
 	existsEmail, err := repo.Client.Exists(repo.CtxBase, keyEmail)
 	if err != nil {
 		return false, err
@@ -36,10 +36,10 @@ func (repo *UserAerospikeRepository) CreateRecordRegister(userModel models.User)
 	// Gom chung một bộ Bins đầy đủ cho cả 2 Key, để sau này có thể dễ dàng
 	//truy xuất email từ username hoặc ngược lại nếu cần thiết
 	bins := as.BinMap{
-		"email":         userModel.Email,
-        "username":      userModel.Username,
-        "password_hash": userModel.PasswordHash,
-        "full_name":     userModel.FullName,
+		"email"         :userModel.Email,
+        "username"      :userModel.Username,
+        "password_hash" :userModel.PasswordHash,
+        "full_name"     :userModel.FullName,
 	}
 
 	// 2. Sử dụng chính sách WritePolicy đã cấu hình (có TTL 300s từ main.go)
@@ -62,8 +62,8 @@ func (repo *UserAerospikeRepository) CreateRecordRegister(userModel models.User)
 
 func (repo *UserAerospikeRepository) DeleteRecordRegister(email, username string) (bool, error) {
 	// Xóa record tạm thời trong Aerospike nếu Kafka xử lý lỗi hoặc sau khi đã xử lý xong
-	keyEmail, _ := as.NewKey("fashion_e-commerce", "usersRegister", "pending:"+email)
-	keyUsername, _ := as.NewKey("fashion_e-commerce", "usersRegister", "pending:"+username)
+	keyEmail, _ := as.NewKey("fashion_e-commerce", "usersRegister", "pending:email:"+email)
+	keyUsername, _ := as.NewKey("fashion_e-commerce", "usersRegister", "pending:username:"+username)
 
 	// Xóa record cho Email
 	_, errEmail := repo.Client.Delete(repo.CtxWrite, keyEmail)

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"log"
 
@@ -8,7 +10,8 @@ import (
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryAerospike"
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryKafkaProducer"
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryMysql"
-	"github.com/DVT1609/fashion_e-commerce.git/internal/utils/security"
+
+	// "github.com/DVT1609/fashion_e-commerce.git/internal/utils/security"
 	"github.com/gofiber/fiber/v3"
 	// "golang.org/x/crypto/bcrypt"
 )
@@ -52,11 +55,17 @@ func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.Regi
 
 	// 2. Mã hóa mật khẩu (Bcrypt)
 	// Phải băm mật khẩu trước khi lưu trữ hoặc đẩy vào Kafka để bảo mật thông tin người dùng
-	hashedPassword, err := security.HashPasswordArgon2(registerRequest.Password)
-	if err != nil {
-		log.Printf("Lỗi khi băm mật khẩu Argon2: %v", err)
-		return errors.New("không thể xử lý mật khẩu")
-	}
+	// hashedPassword, err := security.HashPasswordArgon2(registerRequest.Password)
+	// if err != nil {
+	// 	log.Printf("Lỗi khi băm mật khẩu Argon2: %v", err)
+	// 	return errors.New("không thể xử lý mật khẩu")
+	// }
+
+	// 🛠️ 2. BĂM MẬT KHẨU SIÊU NHẸ BẰNG SHA-256 TẠI API
+	// Giải pháp này giúp bảo mật đường truyền sang Kafka mà không gây nghẽn CPU API
+	hash := sha256.New()
+	hash.Write([]byte(registerRequest.Password))
+	passwordHash := hex.EncodeToString(hash.Sum(nil))
 
 	// Chuẩn bị dữ liệu để lưu trữ (thay mật khẩu thô bằng bản đã băm)
 	userModel := models.User{
@@ -65,7 +74,7 @@ func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.Regi
 		Email:        registerRequest.Email,
 		Phone:        registerRequest.Phone,
 		Address:      registerRequest.Address,
-		PasswordHash: string(hashedPassword),
+		PasswordHash: string(passwordHash),
 	}
 
 	// 3. Ghi tạm vào Aerospike để "giữ chỗ"
@@ -76,7 +85,7 @@ func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.Regi
 	}
 
 	// 4. Đẩy vào Kafka Producer
-	// Sau khi ném vào Kafka, ta có thể trả về Success cho khách hàng ngay lập tức
+	// Sau khi ném vào Kafka, trả về Success cho khách hàng ngay lập tức
 	err = service.KafkaProducer.ProduceRegisterMessage(userModel)
 	if err != nil {
 		// Nếu Kafka lỗi, cần xóa "chỗ" đã giữ trong Aerospike để người dùng có thể thử lại

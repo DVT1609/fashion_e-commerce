@@ -1,17 +1,17 @@
 package main
 
 import (
-	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryAerospike" // Thay thế bằng đường dẫn thực tế đến package repository aerospike
-	"github.com/DVT1609/fashion_e-commerce.git/internal/database/mysql" // Thay thế bằng đường dẫn thực tế đến package mysql
-	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryMysql" // Thay thế bằng đường dẫn thực tế đến package repository mysql
-	"github.com/DVT1609/fashion_e-commerce.git/internal/message_queue/kafka" // Thay thế bằng đường dẫn thực tế đến package kafka
+	"github.com/DVT1609/fashion_e-commerce.git/internal/database/aerospike"                 // Thay thế bằng đường dẫn thực tế đến package aerospike
+	"github.com/DVT1609/fashion_e-commerce.git/internal/database/mysql"                     // Thay thế bằng đường dẫn thực tế đến package mysql
+	"github.com/DVT1609/fashion_e-commerce.git/internal/handler"                            // Thay thế bằng đường dẫn thực tế đến package handler
+	"github.com/DVT1609/fashion_e-commerce.git/internal/message_queue/kafka"                // Thay thế bằng đường dẫn thực tế đến package kafka
+	"github.com/DVT1609/fashion_e-commerce.git/internal/models"                             // Thay thế bằng đường dẫn thực tế đến package models
+	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryAerospike"     // Thay thế bằng đường dẫn thực tế đến package repository aerospike
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryKafkaProducer" // Thay thế bằng đường dẫn thực tế đến package repository kafka producer
-	"github.com/DVT1609/fashion_e-commerce.git/internal/database/aerospike" // Thay thế bằng đường dẫn thực tế đến package aerospike
-	"github.com/DVT1609/fashion_e-commerce.git/internal/service"        // Thay thế bằng đường dẫn thực tế đến package service
-	"github.com/DVT1609/fashion_e-commerce.git/internal/handler"        // Thay thế bằng đường dẫn thực tế đến package handler 
-	"github.com/DVT1609/fashion_e-commerce.git/internal/models"         // Thay thế bằng đường dẫn thực tế đến package models 
+	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryMysql"         // Thay thế bằng đường dẫn thực tế đến package repository mysql
+	"github.com/DVT1609/fashion_e-commerce.git/internal/service"                            // Thay thế bằng đường dẫn thực tế đến package service
 	as "github.com/aerospike/aerospike-client-go/v7"
-	"github.com/go-playground/validator/v10"        
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 )
 
