@@ -24,7 +24,7 @@ func CreateConsumer() *kafka.Reader {
 	// Khởi tạo Reader (Consumer)
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{"kafka:9092"},
-		GroupID:  "golang-group-1", // Group ID rất quan trọng khi đi làm
+		GroupID:  "register-worker-group", // Group ID rất quan trọng khi đi làm
 		Topic:    "user-registered",
 		MaxBytes: 10e6, // 10MB
 	})

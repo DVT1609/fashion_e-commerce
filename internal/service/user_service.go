@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"log"
 
 	"github.com/DVT1609/fashion_e-commerce.git/internal/models"
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryAerospike"
@@ -36,7 +35,7 @@ func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.Regi
 	// Đây là "chốt chặn" tốc độ cao giúp hệ thống không bị quá tải bởi các yêu cầu spam
 	exists, err := service.UserAerospikeRepository.CheckUserExistsAerospike(registerRequest.Email, registerRequest.Username)
 	if err != nil {
-		log.Printf("Lỗi kiểm tra tồn tại dữ liệu chưa trong aerospike: %v", err)
+		// log.Printf("Lỗi kiểm tra tồn tại dữ liệu chưa trong aerospike: %v", err)
 		return err
 	}
 
@@ -44,7 +43,7 @@ func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.Regi
 		// Nếu không tồn tại, tiếp tục quy trình check trong MySQL để đảm bảo dữ liệu nhất quán
 		existsInMySQL, err := service.UserMysqlRepository.CheckUserExistsMysql(registerRequest.Email, registerRequest.Username)
 		if err != nil {
-			log.Printf("Lỗi kiểm tra tồn tại dữ liệu trong mysql: %v", err)
+			// log.Printf("Lỗi kiểm tra tồn tại dữ liệu trong mysql: %v", err)
 			return err
 		}
 
@@ -91,7 +90,7 @@ func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.Regi
 		// Nếu Kafka lỗi, cần xóa "chỗ" đã giữ trong Aerospike để người dùng có thể thử lại
 		deleteSuccess, deleteErr := service.UserAerospikeRepository.DeleteRecordRegister(userModel.Email, userModel.Username)
 		if deleteErr != nil {
-			log.Printf("Lỗi khi xóa record tạm thời trong Aerospike: %v", deleteErr)
+			// log.Printf("Lỗi khi xóa record tạm thời trong Aerospike: %v", deleteErr)
 		}
 		if deleteSuccess {
 			ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

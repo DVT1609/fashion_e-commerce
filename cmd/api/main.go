@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/DVT1609/fashion_e-commerce.git/internal/database/aerospike"                 // Thay thế bằng đường dẫn thực tế đến package aerospike
 	"github.com/DVT1609/fashion_e-commerce.git/internal/database/mysql"                     // Thay thế bằng đường dẫn thực tế đến package mysql
 	"github.com/DVT1609/fashion_e-commerce.git/internal/handler"                            // Thay thế bằng đường dẫn thực tế đến package handler
@@ -10,6 +12,7 @@ import (
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryKafkaProducer" // Thay thế bằng đường dẫn thực tế đến package repository kafka producer
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryMysql"         // Thay thế bằng đường dẫn thực tế đến package repository mysql
 	"github.com/DVT1609/fashion_e-commerce.git/internal/service"                            // Thay thế bằng đường dẫn thực tế đến package service
+	"github.com/DVT1609/fashion_e-commerce.git/internal/worker"                             // Thay thế bằng đường dẫn thực tế đến package worker
 	as "github.com/aerospike/aerospike-client-go/v7"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
@@ -56,6 +59,9 @@ func main() {
 	// Khởi tạo Producer Kafka
 	writer := kafka.CreateProducer()
 
+	//Khởi tạo Reader Kafka (dành cho Worker)
+	kafkaReader := kafka.CreateConsumer()
+
 	// Khởi tạo Repository
 	// Khởi tạo Repository Aerospike với client và context đã cấu hình
 	userRepositoryAerospike := repositoryAerospike.UserAerospikeRepository{Client: aerospikeClient, CtxBase: ctxBase, CtxWrite: ctxWrite}
@@ -72,5 +78,18 @@ func main() {
 
 	app.Post("/Register", userHandler.Register)
 
+	registerWorker := worker.NewRegisterWorker(kafkaReader, db, aerospikeClient, ctxWrite)
+	// CHÚ Ý: Giới hạn số lượng Worker chạy cùng lúc dựa trên số luồng CPU
+	// Máy của Bạn có 4 luồng logic, nên tối ưu nhất là chạy 3 - 4 Worker song song
+	numWorkers := 4
+	for i := 0; i < numWorkers; i++ {
+		workerID := i + 1
+		go func(id int) {
+			// log.Printf("[Worker-%d] Đã kích hoạt chạy ngầm...", id)
+			registerWorker.WorkerRegister(context.Background())
+		}(workerID)
+	}
+
 	app.Listen(":3004")
+	
 }
