@@ -22,7 +22,7 @@ func ConnectAerospike() (*as.Client, error) {
 	policy.UseServicesAlternate = true
 
 	config := config.LoadConfigAerospike()
-	client, err := as.NewClientWithPolicy(nil, config.Aerospike_Host, 3000)
+	client, err := as.NewClientWithPolicy(policy, config.Aerospike_Host, 3000)
 	if err != nil {
 		log.Fatalf("Lỗi kết nối aerospike 1: %v", err)
 		return nil, err

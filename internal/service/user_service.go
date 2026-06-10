@@ -9,10 +9,6 @@ import (
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryAerospike"
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryKafkaProducer"
 	"github.com/DVT1609/fashion_e-commerce.git/internal/repository/repositoryMysql"
-
-	// "github.com/DVT1609/fashion_e-commerce.git/internal/utils/security"
-	"github.com/gofiber/fiber/v3"
-	// "golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -29,27 +25,25 @@ func NewUserService(kafkaProducerRepository *repositoryKafkaProducer.UserKafkaPr
 	}
 }
 
-func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.RegisterRequest) error {
+func (service *UserService) Register(registerRequest *models.RegisterRequest) error {
 
-	// 1. Check Aerospike (Email/Username?Password) để chặn request trùng lặp ngay lập tức
-	// Đây là "chốt chặn" tốc độ cao giúp hệ thống không bị quá tải bởi các yêu cầu spam
+	// 1. Check Aerospike trước — chốt chặn tốc độ cao, tránh hit DB khi spam
 	exists, err := service.UserAerospikeRepository.CheckUserExistsAerospike(registerRequest.Email, registerRequest.Username)
 	if err != nil {
-		// log.Printf("Lỗi kiểm tra tồn tại dữ liệu chưa trong aerospike: %v", err)
 		return err
 	}
+	// Aerospike có record (pending hoặc confirmed_in_db) → chặn ngay, không tiếp tục
+	if exists {
+		return errors.New("Email hoặc username đã tồn tại hoặc đang được xử lý")
+	}
 
-	if !exists {
-		// Nếu không tồn tại, tiếp tục quy trình check trong MySQL để đảm bảo dữ liệu nhất quán
-		existsInMySQL, err := service.UserMysqlRepository.CheckUserExistsMysql(registerRequest.Email, registerRequest.Username)
-		if err != nil {
-			// log.Printf("Lỗi kiểm tra tồn tại dữ liệu trong mysql: %v", err)
-			return err
-		}
-
-		if existsInMySQL == true {
-			return errors.New("Email hoặc username đã tồn tại")
-		}
+	// 2. Aerospike không có → check MySQL để đảm bảo dữ liệu nhất quán
+	existsInMySQL, err := service.UserMysqlRepository.CheckUserExistsMysql(registerRequest.Email, registerRequest.Username)
+	if err != nil {
+		return err
+	}
+	if existsInMySQL {
+		return errors.New("Email hoặc username đã tồn tại")
 	}
 
 	// 2. Mã hóa mật khẩu (Bcrypt)
@@ -83,20 +77,16 @@ func (service *UserService) Register(ctx fiber.Ctx, registerRequest *models.Regi
 		return err
 	}
 
-	// 4. Đẩy vào Kafka Producer
-	// Sau khi ném vào Kafka, trả về Success cho khách hàng ngay lập tức
+	// 4. Đẩy vào Kafka Producer — trả Success cho client ngay khi push thành công
 	err = service.KafkaProducer.ProduceRegisterMessage(userModel)
 	if err != nil {
-		// Nếu Kafka lỗi, cần xóa "chỗ" đã giữ trong Aerospike để người dùng có thể thử lại
-		deleteSuccess, deleteErr := service.UserAerospikeRepository.DeleteRecordRegister(userModel.Email, userModel.Username)
-		if deleteErr != nil {
-			// log.Printf("Lỗi khi xóa record tạm thời trong Aerospike: %v", deleteErr)
+		// Xóa Aerospike reservation để user có thể thử lại
+		if _, deleteErr := service.UserAerospikeRepository.DeleteRecordRegister(
+			userModel.Email, userModel.Username,
+		); deleteErr != nil {
+			// log.Printf("Lỗi xóa Aerospike sau Kafka fail: %v", deleteErr)
 		}
-		if deleteSuccess {
-			ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Đăng ký thất bại do lỗi hệ thống, vui lòng thử lại sau",
-			})
-		}
+		return errors.New("Đăng ký thất bại do lỗi hệ thống, vui lòng thử lại sau")
 	}
 
 	return nil

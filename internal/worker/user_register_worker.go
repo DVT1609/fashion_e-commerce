@@ -37,13 +37,13 @@ func NewRegisterWorker(reader *kafka.Reader, db *gorm.DB, asClient *as.Client, a
 // Start kịch bản lắng nghe hàng đợi Kafka liên tục
 func (w *RegisterWorker) WorkerRegister(ctx context.Context) {
 	log.Println("Worker đăng ký đã sẵn sàng và đang lắng nghe Kafka...")
-	
+
 	// Tạo một channel nội bộ để trung chuyển các User đã băm Argon2id
 	userChan := make(chan models.User, w.batchSize)
 
 	// Mảng tạm để chứa lô dữ liệu chuẩn bị ghim vào MySQL
 	batch := make([]models.User, 0, w.batchSize)
-	
+
 	// Khởi tạo bộ đếm thời gian 10 giây
 	ticker := time.NewTicker(w.flushInterval)
 	defer ticker.Stop()

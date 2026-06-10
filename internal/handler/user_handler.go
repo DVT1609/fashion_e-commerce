@@ -65,7 +65,7 @@ func (handler *UserHandler) Register(ctx fiber.Ctx) error {
 	}
 
 	// 4. Nếu mọi thứ ổn, gọi tiếp tầng Service
-	err := handler.UserService.Register(ctx, &registerRequest)
+	err := handler.UserService.Register(&registerRequest)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
